@@ -133,44 +133,6 @@ function main
 }
 
 
-function test_agent
-{
-
-echo Shh-Agent PID: $SSH_AGENT_PID
-
-
-
-agent_pid_file=data/agent_pid
-agent_pid_file_value=`cat $agent_pid_file`
-
-
-
-echo $agent_pid_file_value
-echo $SSH_AGENT_PID > data/agent_pid
-echo $SSH_AUTH_SOCK >> data/agent_pid
-
-if [ $SSH_AGENT_PID == ""]
-then
-echo variable SSH_AGENT_PID does not exists
-fi
-
-if [ -f data/agent_pid ]
-        then
-                echo SSH_AGENT already ran
-
-                if [ $SSH_AGENT_PID == $agent_pid_file_value ]
-                then
-
-
-                        if [ `ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'` == $agent_pid_file_value ]
-                        then
-                        echo OK agent-pid matches, ssh-agent deamon id: $agent_pid_file_value.
-                        fi
-                fi
-
-fi
-}
-
 
 
 main
