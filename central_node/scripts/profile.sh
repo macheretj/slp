@@ -6,7 +6,7 @@ trap "echo CTRL-C not allowed!" 2
 
 echo "************** SCRIPT STARTING **************"
 
-function variableInit
+function variableInit()
 {
         data_dir=data
         ssh_agent_data_file=$data_dir/ssh_agent_file
@@ -17,7 +17,7 @@ function variableInit
 
 
 
-function slpEnvExists
+function slpEnvExists()
 {
         if [ -d $data_dir ]
         then
@@ -27,14 +27,14 @@ function slpEnvExists
         fi
 }
 
-function createSLPEnv
+function createSLPEnv()
 {
         echo "**** Data dir path: $data_dir"
         mkdir $data_dir
 
 }
 
-function isAgentRunning
+function isAgentRunning()
 {
 
         if [ "`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}' | wc -l`" -eq 1 ]
@@ -56,7 +56,7 @@ function isAgentRunning
 }
 
 
-function purgeSshAgent
+function purgeSshAgent()
 {
 
 for ssh_agent_process in `ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'`
@@ -70,7 +70,7 @@ echo "" > $ssh_agent_data_file
 
 }
 
-function startSshAgent
+function startSshAgent()
 {
 
 echo "**** Starting SSH-AGENT"
@@ -83,7 +83,7 @@ echo $SSH_AUTH_SOCK >> $ssh_agent_data_file
 
 }
 
-function setSshAgentEnvVar
+function setSshAgentEnvVar()
 {
 
 echo "**** Setting environment variables"
@@ -97,7 +97,7 @@ export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
 }
 
 
-function checkSshAgentConsistency
+function checkSshAgentConsistency()
 {
 
 stored_agent_pid=`cat $ssh_agent_data_file | head -1 | tail -1`
@@ -119,7 +119,7 @@ fi
 
 
 
-function main
+function main()
 {
 
         variableInit
