@@ -1,4 +1,5 @@
-#!/bin/sh -e
+#!/bin/bash
+
 trap "echo CTRL-C not allowed!" 2
 
 
@@ -75,7 +76,7 @@ function startSshAgent()
 
 echo "**** Starting SSH-AGENT"
 eval `ssh-agent`
-ssh-add
+ssh-add ~/.ssh/id_dsa_slp
 
 
 echo $SSH_AGENT_PID > $ssh_agent_data_file
