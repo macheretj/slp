@@ -3,7 +3,7 @@ SLP - SSH Single Login Point
 
 This project aims to automate ssh-agent mechanism for users and provide a secured single point of login.
 
-TODO before alapha version
+TODO before alpha version
 =====
 - implement client side
 - install apache2 on server side
