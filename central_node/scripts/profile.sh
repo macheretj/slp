@@ -7,18 +7,28 @@ trap "echo CTRL-C not allowed!" 2
 
 echo "************** SCRIPT STARTING **************"
 
-function variableInit()
+function variable_init()
 {
+
+	#ssh-agent data vars
         data_dir=data
         ssh_agent_data_file=$data_dir/ssh_agent_file
 
-        echo "**** paths: $data_dir and $ssh_agent_data_file"
+	#process list propreties
+	ps_options="-e -o user,pid,comm"
+	ps_user_col_ref=1
+	ps_pid_col_ref=2
+	ps_comm_col_ref=3
+
+	#ssh keys data
+	ssh_key_path=~/.ssh/
+	slp_ssh_key_name=id_dsa_slp
 
 }
 
 
 
-function slpEnvExists()
+function slp_env_exists()
 {
         if [ -d $data_dir ]
         then
@@ -28,22 +38,22 @@ function slpEnvExists()
         fi
 }
 
-function createSLPEnv()
+function create_slp_env()
 {
         echo "**** Data dir path: $data_dir"
         mkdir $data_dir
 
 }
 
-function isAgentRunning()
+function is_agent_running()
 {
 
-        if [ "`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}' | wc -l`" -eq 1 ]
+        if [ "`ps $ps_options | grep $LOGNAME | awk -v temp=$ps_comm_col_ref '{print $temp}' | egrep -x ssh-agent | wc -l`" -eq 1 ]
         then
 
                 echo true
 
-        elif [ "`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}' | wc -l`" -gt 1 ]
+        elif [ "`ps $ps_options | grep $LOGNAME | awk -v temp=$ps_comm_col_ref '{print $temp}' | egrep -x ssh-agent | wc -l`" -gt 1 ]
         then
 
                 echo error
@@ -57,10 +67,12 @@ function isAgentRunning()
 }
 
 
-function purgeSshAgent()
+function purge_ssh_agent()
 {
 
-for ssh_agent_process in `ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'`
+echo "**** Purging ssh-agent process"
+
+for ssh_agent_process in `ps $ps_options | grep $LOGNAME | grep ssh-agent | awk -v temp=$ps_pid_col_ref '{print $temp}'`
 do
         echo "**** Killing ssh-agent process PID: $ssh_agent_process"
         kill $ssh_agent_process
@@ -71,11 +83,20 @@ echo "" > $ssh_agent_data_file
 
 }
 
-function startSshAgent()
+function start_ssh_agent()
 {
+
 
 echo "**** Starting SSH-AGENT"
 eval `ssh-agent`
+
+#check if ssh-key file does NOT exists
+if [ ! -f ~/.ssh/id_dsa_slp ]
+then
+	echo "**** Ssh-key file does NOT exists"
+	generate_ssh_key
+fi
+
 ssh-add ~/.ssh/id_dsa_slp
 
 
@@ -84,7 +105,16 @@ echo $SSH_AUTH_SOCK >> $ssh_agent_data_file
 
 }
 
-function setSshAgentEnvVar()
+function generate_ssh_key()
+{
+
+echo "**** Please follow the instructions to generate your SSH-KEY"
+echo "**** DO NOT USE AN EMPTY PASSPHRASE!"
+ssh-keygen -t dsa -f ~/.ssh/id_dsa_slp -q 
+
+}
+
+function set_ssh_agent_env_var()
 {
 
 echo "**** Setting environment variables"
@@ -98,7 +128,7 @@ export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
 }
 
 
-function checkSshAgentConsistency()
+function check_ssh_agent_consistency()
 {
 
 stored_agent_pid=`cat $ssh_agent_data_file | head -1 | tail -1`
@@ -123,33 +153,33 @@ fi
 function main()
 {
 
-        variableInit
+        variable_init
 
 
-        case `slpEnvExists` in
+        case `slp_env_exists` in
                 "true") echo "**** SLP ENV OK";;
                 "false") echo "**** SLP ENV does not exists, creating..."
-                createSLPEnv;;
+                create_slp_env;;
         esac
 
 
-        case `isAgentRunning` in
+        case `is_agent_running` in
                 "true") echo "**** Agent is running"
-                        setSshAgentEnvVar
+                        set_ssh_agent_env_var
 
-                case `checkSshAgentConsistency` in
+                case `check_ssh_agent_consistency` in
                         "true") echo "**** Agent is consistent, stored PID and running process PID matches!";;
                         "false") echo "**** Agent not consistent, stored PID and running PID DO NOT MATCHES!"
-                        purgeSshAgent
-                        startSshAgent;;
+                        purge_ssh_agent
+                        start_ssh_agent;;
                 esac;;
 
                 "false") echo "**** Agent is not Running"
-                        startSshAgent;;
+                        start_ssh_agent;;
                 "error")
                         echo "**** Error, more than 1 agent is running for user: $LOGNAME"
-                        purgeSshAgent
-                        startSshAgent;;
+                        purge_ssh_agent
+                        start_ssh_agent;;
         esac
 
 }
