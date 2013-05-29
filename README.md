@@ -5,6 +5,8 @@ This project aims to automate ssh-agent mechanism for users and provide a secure
 
 TODO before alpha version
 =====
+- Full documentation
+  - comment the code
 - implement client side
 - install apache2 on server side
   - document install and vhost config
