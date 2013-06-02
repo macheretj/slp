@@ -31,8 +31,8 @@ function variable_init()
 
                 # Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
                 # ... extracting only process by strict name "ssh-agent"
-                ssh_agent_process_list=`bash sps.sh ssh-agent`
-                running_ssh_agent_process_number=`echo $ssh_agent_process_list | wc -l`
+                ssh_agent_process_list=`bash sps.sh ssh-agent | grep $LOGNAME`
+                running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | grep $LOGNAME | wc -l`
                 running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
 
 }
@@ -92,11 +92,12 @@ function purge_ssh_agent()
 	# Kill all ssh-agent process
 	echo "**** Purging ssh-agent process"
 
-	for ssh_agent_process in `echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+	while read line
 	do
-        	echo "**** Killing ssh-agent process PID: $ssh_agent_process"
-        	kill $ssh_agent_process
-	done
+		proc_pid=`echo $line | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+		echo "**** Killing ssh-agent process PID: $proc_pid"
+		kill $proc_pid
+	done < <(echo "$ssh_agent_process_list")
 
 	# Empty  SLP data file
 	echo "" > $ssh_agent_data_file
@@ -110,7 +111,7 @@ function start_ssh_agent()
 
 	echo "**** Starting SSH-AGENT"
 	
-	eval `ssh-agent`
+	eval `ssh-agent` > /dev/null
 
 	#check if ssh-key file does NOT exists
 	if [ ! -f ~/.ssh/id_dsa_slp ]
