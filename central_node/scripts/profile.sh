@@ -7,18 +7,30 @@ trap "echo CTRL-C not allowed!" 2
 
 echo "************** SCRIPT STARTING **************"
 
-function variableInit()
-{
-        data_dir=data
-        ssh_agent_data_file=$data_dir/ssh_agent_file
 
-        echo "**** paths: $data_dir and $ssh_agent_data_file"
+# All variable initialization
+function variable_init()
+{
+
+	#ssh-agent data vars
+        data_dir=.slp_data
+        ssh_agent_data_file=$data_dir/ssh_agent_data_file
+
+	#process list propreties
+	ps_options="-e -o user,pid,comm"
+	ps_user_col_ref=1
+	ps_pid_col_ref=2
+	ps_comm_col_ref=3
+
+	#ssh keys data
+	ssh_key_path=~/.ssh/
+	slp_ssh_key_path=$ssh_key_path/id_dsa_slp
 
 }
 
 
-
-function slpEnvExists()
+# Checks is SLP data dir exists
+function slp_env_exists()
 {
         if [ -d $data_dir ]
         then
@@ -28,26 +40,38 @@ function slpEnvExists()
         fi
 }
 
-function createSLPEnv()
+# Creates the SLP data dir and data file
+function create_slp_env()
 {
         echo "**** Data dir path: $data_dir"
         mkdir $data_dir
+	touch $ssh_agent_data_file
 
 }
 
-function isAgentRunning()
+# Checks if an ssh-agent is already running for the current user
+function is_agent_running()
 {
 
-        if [ "`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}' | wc -l`" -eq 1 ]
-        then
+	# Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
+	# ... extracting only process by strict name "ssh-agent"
+	ssh_agent_process_list=( `ps $ps_options | grep $LOGNAME | awk -v temp=$ps_comm_col_ref '{print $temp}' | egrep -x ssh-agent` )
+	running_ssh_agent_process_number=${#ssh_agent_process_list[@]}
 
+
+	# If only 1 instance of ssh-agent is running for current user.
+        if [ $running_ssh_agent_process_number -eq 1 ]
+        then
+		ssh_agent_process_pid=`ps $ps_options | grep $LOGNAME | awk -v temp=$ps_pid_col_ref '{print $temp}' | egrep -x ssh-agent`
                 echo true
 
-        elif [ "`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}' | wc -l`" -gt 1 ]
+	# If there is more than 1 process running for current user, something is probably wrong.
+        elif [ $running_ssh_agent_process_number -gt 1 ]
         then
 
                 echo error
 
+	# Anything else, empty value, etc, agent is probably not running.
         else
 
                 echo false
@@ -57,64 +81,97 @@ function isAgentRunning()
 }
 
 
-function purgeSshAgent()
+
+# Kills all ssh-agents for current user and empty data file
+
+function purge_ssh_agent()
 {
 
-for ssh_agent_process in `ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'`
-do
-        echo "**** Killing ssh-agent process PID: $ssh_agent_process"
-        kill $ssh_agent_process
-done
+	# Kill all ssh-agent process
+	echo "**** Purging ssh-agent process"
 
+	for ssh_agent_process in `ps $ps_options | grep $LOGNAME | grep ssh-agent | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+	do
+        	echo "**** Killing ssh-agent process PID: $ssh_agent_process"
+        	kill $ssh_agent_process
+	done
 
-echo "" > $ssh_agent_data_file
+	# Empty  SLP data file
+	echo "" > $ssh_agent_data_file
 
 }
 
-function startSshAgent()
+# Starts a new ssh-agent for current user
+function start_ssh_agent()
 {
 
-echo "**** Starting SSH-AGENT"
-eval `ssh-agent`
-ssh-add ~/.ssh/id_dsa_slp
 
+	echo "**** Starting SSH-AGENT"
+	
+	eval `ssh-agent`
 
-echo $SSH_AGENT_PID > $ssh_agent_data_file
-echo $SSH_AUTH_SOCK >> $ssh_agent_data_file
+	#check if ssh-key file does NOT exists
+	if [ ! -f ~/.ssh/id_dsa_slp ]
+	then
+		echo "**** Ssh-key file does NOT exists, script will now generete one"
+		generate_ssh_key
+	fi
+
+	# Adds the ssh public key to the running agent.
+	ssh-add $slp_ssh_key_path
+
+	echo $SSH_AGENT_PID > $ssh_agent_data_file
+	echo $SSH_AUTH_SOCK >> $ssh_agent_data_file
 
 }
 
-function setSshAgentEnvVar()
+# Generated a new SSH key pair
+function generate_ssh_key()
 {
 
-echo "**** Setting environment variables"
-
-echo "**** SSH-Agent PID: $ssh_agent_pid_value"
-export SSH_AGENT_PID=`cat $ssh_agent_data_file | head -1 | tail -1`
-
-echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"
-export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
+	echo "**** Please follow the instructions to generate your SSH-KEY"
+	echo "**** DO NOT USE AN EMPTY PASSPHRASE!"
+	
+	# generates the key ending with "_slp" to be different from users created ssh key pairs.
+	ssh-keygen -t dsa -f $slp_ssh_key_path -q 
 
 }
 
-
-function checkSshAgentConsistency()
+# Retreives previously used ssh-agent pid and socket to avoid recreating one and have to enter passphrases again.
+# ssh-agent process stays alive after user logout, but the env variable.
+# linux bash/shell uses SSH_AGENT_PID and SSH_AUTH_SOCK as environment variable to communicate with the running ssh-agent.
+# function fetchs the value from data file and set them as correct env variable.
+function set_ssh_agent_env_var()
 {
 
-stored_agent_pid=`cat $ssh_agent_data_file | head -1 | tail -1`
-running_agent_pid=`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'`
+	echo "**** Setting environment variables"
+
+	echo "**** SSH-Agent PID: $ssh_agent_pid_value"
+	export SSH_AGENT_PID=`cat $ssh_agent_data_file | head -1 | tail -1`
+
+	echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"
+	export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
+
+}
+
+# Checks if the running ssh-agent PID matchs the one stored in the data file, done to avoid potential incoherences.
+function check_ssh_agent_consistency()
+{
+
+	stored_agent_pid=`cat $ssh_agent_data_file | head -1 | tail -1`
+	running_agent_pid=`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'`
 
 
-if [ $stored_agent_pid == $running_agent_pid ] && [ $stored_agent_pid == $SSH_AGENT_PID ]
-then
+	if [ $stored_agent_pid == $running_agent_pid ] && [ $stored_agent_pid == $SSH_AGENT_PID ]
+	then
 
-echo true
+		echo true
 
-else
+	else
 
-echo false
+		echo false
 
-fi
+	fi
 
 }
 
@@ -123,33 +180,33 @@ fi
 function main()
 {
 
-        variableInit
+        variable_init
 
 
-        case `slpEnvExists` in
+        case `slp_env_exists` in
                 "true") echo "**** SLP ENV OK";;
                 "false") echo "**** SLP ENV does not exists, creating..."
-                createSLPEnv;;
+                create_slp_env;;
         esac
 
 
-        case `isAgentRunning` in
+        case `is_agent_running` in
                 "true") echo "**** Agent is running"
-                        setSshAgentEnvVar
+                        set_ssh_agent_env_var
 
-                case `checkSshAgentConsistency` in
+                case `check_ssh_agent_consistency` in
                         "true") echo "**** Agent is consistent, stored PID and running process PID matches!";;
                         "false") echo "**** Agent not consistent, stored PID and running PID DO NOT MATCHES!"
-                        purgeSshAgent
-                        startSshAgent;;
+                        purge_ssh_agent
+                        start_ssh_agent;;
                 esac;;
 
                 "false") echo "**** Agent is not Running"
-                        startSshAgent;;
+                        start_ssh_agent;;
                 "error")
                         echo "**** Error, more than 1 agent is running for user: $LOGNAME"
-                        purgeSshAgent
-                        startSshAgent;;
+                        purge_ssh_agent
+                        start_ssh_agent;;
         esac
 
 }
