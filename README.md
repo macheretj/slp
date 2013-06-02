@@ -4,7 +4,15 @@ SLP - SSH Single Login Point
 This project aims to automate ssh-agent mechanism for users and provide a secured single point of login.
 
 TODO before alpha version
-=====
+===
+
+PRIORITARY:
+- find a better way to work with ssh-agent processes
+  - use of arrays
+    - sort processes within arrays
+  - avoid using ps command more than once
+
+SECONDARY:
 - Full documentation
   - comment the code
 - implement client side
