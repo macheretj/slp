@@ -31,8 +31,8 @@ function variable_init()
 
                 # Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
                 # ... extracting only process by strict name "ssh-agent"
-                ssh_agent_process_list=`bash sps.sh ssh-agent | grep $LOGNAME`
-                running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | grep $LOGNAME | wc -l`
+                ssh_agent_process_list=`bash sps.sh ssh-agent | grep $(whoami)`
+                running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | wc -l`
                 running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
 
 }
