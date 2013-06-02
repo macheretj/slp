@@ -26,6 +26,15 @@ function variable_init()
 	ssh_key_path=~/.ssh/
 	slp_ssh_key_path=$ssh_key_path/id_dsa_slp
 
+
+	# ssh-agent process infos
+
+                # Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
+                # ... extracting only process by strict name "ssh-agent"
+                ssh_agent_process_list=`bash sps.sh ssh-agent | grep $LOGNAME`
+                running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | grep $LOGNAME | wc -l`
+                running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+
 }
 
 
@@ -53,16 +62,9 @@ function create_slp_env()
 function is_agent_running()
 {
 
-	# Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
-	# ... extracting only process by strict name "ssh-agent"
-	ssh_agent_process_list=( `ps $ps_options | grep $LOGNAME | awk -v temp=$ps_comm_col_ref '{print $temp}' | egrep -x ssh-agent` )
-	running_ssh_agent_process_number=${#ssh_agent_process_list[@]}
-
-
 	# If only 1 instance of ssh-agent is running for current user.
         if [ $running_ssh_agent_process_number -eq 1 ]
         then
-		ssh_agent_process_pid=`ps $ps_options | grep $LOGNAME | awk -v temp=$ps_pid_col_ref '{print $temp}' | egrep -x ssh-agent`
                 echo true
 
 	# If there is more than 1 process running for current user, something is probably wrong.
@@ -90,11 +92,12 @@ function purge_ssh_agent()
 	# Kill all ssh-agent process
 	echo "**** Purging ssh-agent process"
 
-	for ssh_agent_process in `ps $ps_options | grep $LOGNAME | grep ssh-agent | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+	while read line
 	do
-        	echo "**** Killing ssh-agent process PID: $ssh_agent_process"
-        	kill $ssh_agent_process
-	done
+		proc_pid=`echo $line | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+		echo "**** Killing ssh-agent process PID: $proc_pid"
+		kill $proc_pid
+	done < <(echo "$ssh_agent_process_list")
 
 	# Empty  SLP data file
 	echo "" > $ssh_agent_data_file
@@ -108,7 +111,7 @@ function start_ssh_agent()
 
 	echo "**** Starting SSH-AGENT"
 	
-	eval `ssh-agent`
+	eval `ssh-agent` > /dev/null
 
 	#check if ssh-key file does NOT exists
 	if [ ! -f ~/.ssh/id_dsa_slp ]
@@ -159,10 +162,14 @@ function check_ssh_agent_consistency()
 {
 
 	stored_agent_pid=`cat $ssh_agent_data_file | head -1 | tail -1`
-	running_agent_pid=`ps -ef | grep ssh-agent | grep -v grep | grep $LOGNAME | awk '{print $2}'`
+
+	echo "**** Stored agent PID: $stored_agent_pid" > /dev/tty
+	echo "**** Running agent PID: $running_agent_pid" > /dev/tty
+	echo "**** Stored Agent PID: $stored_agent_pid" > /dev/tty
+	echo "**** Env var SSH_AGENT_PID: $SSH_AGENT_PID" > /dev/tty
 
 
-	if [ $stored_agent_pid == $running_agent_pid ] && [ $stored_agent_pid == $SSH_AGENT_PID ]
+	if [ "$stored_agent_pid" == "$running_agent_pid" ] && [ "$stored_agent_pid" == "$SSH_AGENT_PID" ]
 	then
 
 		echo true
