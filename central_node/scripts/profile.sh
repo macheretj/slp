@@ -32,8 +32,20 @@ function variable_init()
                 # Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
                 # ... extracting only process by strict name "ssh-agent"
                 ssh_agent_process_list=`bash sps.sh ssh-agent | grep $(whoami)`
-                running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | wc -l`
-                running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+
+		running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | wc -l`
+
+		if [ "$ssh_agent_process_list" == "" ]
+		then
+			running_ssh_agent_process_number=0
+                fi
+
+		running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+
+
+		echo "**** ssh_agent_process_list value: $ssh_agent_process_list"
+		echo "**** running_ssh_agent_process_number value: $running_ssh_agent_process_number"
+		echo "**** running_agent_pid: $running_agent_pid"
 
 }
 
@@ -75,7 +87,7 @@ function is_agent_running()
 
 	# Anything else, empty value, etc, agent is probably not running.
         else
-
+		echo "**** Agent not running" > /dev/tty
                 echo false
 
         fi
