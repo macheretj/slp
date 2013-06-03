@@ -6,6 +6,8 @@ This project aims to automate ssh-agent mechanism for users and provide a secure
 SLP - Overview
 ===
 
+![SLP Overview schema](https://www.lucidchart.com/publicSegments/view/51abe29b-f344-465c-b2b9-29720a005a97/image.png "SLP Overview schema")
+
 TODO before alpha version
 ===
 
