@@ -12,17 +12,17 @@ echo "************** SCRIPT STARTING **************"
 function variable_init()
 {
 
-	#ssh-agent data vars
+	# ssh-agent data vars
         data_dir=.slp_data
         ssh_agent_data_file=$data_dir/ssh_agent_data_file
 
-	#process list propreties
+	# Process list propreties
 	ps_options="-e -o user,pid,comm"
 	ps_user_col_ref=1
 	ps_pid_col_ref=2
 	ps_comm_col_ref=3
 
-	#ssh keys data
+	# ssh keys data
 	ssh_key_path=~/.ssh/
 	slp_ssh_key_path=$ssh_key_path/id_dsa_slp
 
@@ -33,19 +33,18 @@ function variable_init()
                 # ... extracting only process by strict name "ssh-agent"
                 ssh_agent_process_list=`bash sps.sh ssh-agent | grep $(whoami)`
 
-		running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | wc -l`
-
+		# test if ssh-agent process list is empty
 		if [ "$ssh_agent_process_list" == "" ]
 		then
 			running_ssh_agent_process_number=0
-                fi
-
-		running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
-
-
-		echo "**** ssh_agent_process_list value: $ssh_agent_process_list"
-		echo "**** running_ssh_agent_process_number value: $running_ssh_agent_process_number"
-		echo "**** running_agent_pid: $running_agent_pid"
+		else
+			running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | wc -l`
+                	running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
+		fi
+		
+		echo "**** ssh_agent_process_list value: $ssh_agent_process_list" > /dev/tty
+		echo "**** running_ssh_agent_process_number value: $running_ssh_agent_process_number" > /dev/tty
+		echo "**** running_agent_pid: $running_agent_pid" > /dev/tty
 
 }
 
@@ -64,7 +63,7 @@ function slp_env_exists()
 # Creates the SLP data dir and data file
 function create_slp_env()
 {
-        echo "**** Data dir path: $data_dir"
+        echo "**** Data dir path: $data_dir"  > /dev/tty
         mkdir $data_dir
 	touch $ssh_agent_data_file
 
@@ -102,12 +101,12 @@ function purge_ssh_agent()
 {
 
 	# Kill all ssh-agent process
-	echo "**** Purging ssh-agent process"
+	echo "**** Purging ssh-agent process"  > /dev/tty
 
 	while read line
 	do
 		proc_pid=`echo $line | awk -v temp=$ps_pid_col_ref '{print $temp}'`
-		echo "**** Killing ssh-agent process PID: $proc_pid"
+		echo "**** Killing ssh-agent process PID: $proc_pid"  > /dev/tty
 		kill $proc_pid
 	done < <(echo "$ssh_agent_process_list")
 
@@ -121,14 +120,14 @@ function start_ssh_agent()
 {
 
 
-	echo "**** Starting SSH-AGENT"
+	echo "**** Starting SSH-AGENT"  > /dev/tty
 	
 	eval `ssh-agent` > /dev/null
 
 	#check if ssh-key file does NOT exists
 	if [ ! -f ~/.ssh/id_dsa_slp ]
 	then
-		echo "**** Ssh-key file does NOT exists, script will now generete one"
+		echo "**** Ssh-key file does NOT exists, script will now generete one"  > /dev/tty
 		generate_ssh_key
 	fi
 
@@ -159,12 +158,12 @@ function generate_ssh_key()
 function set_ssh_agent_env_var()
 {
 
-	echo "**** Setting environment variables"
+	echo "**** Setting environment variables"  > /dev/tty
 
-	echo "**** SSH-Agent PID: $ssh_agent_pid_value"
+	echo "**** SSH-Agent PID: $ssh_agent_pid_value"  > /dev/tty
 	export SSH_AGENT_PID=`cat $ssh_agent_data_file | head -1 | tail -1`
 
-	echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"
+	echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"  > /dev/tty
 	export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
 
 }
@@ -206,7 +205,7 @@ function main()
                 "true") echo "**** SLP ENV OK";;
                 "false") echo "**** SLP ENV does not exists, creating..."
                 create_slp_env;;
-        esac
+        esac	
 
 
         case `is_agent_running` in
