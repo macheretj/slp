@@ -1,10 +1,15 @@
-SLP - SSH Single Login Point
+SLP - SSH Single Login Point Project
 ===
+
+Introduction
+--------
 
 This project aims to automate ssh-agent mechanism for users and provide a secured single point of login.
 
-SLP - Overview
-===
+Overview
+--------
+
+![SLP Overview schema](https://www.lucidchart.com/publicSegments/view/51abe29b-f344-465c-b2b9-29720a005a97/image.png "SLP Overview schema")
 
 TODO before alpha version
 ===
