@@ -12,6 +12,10 @@ echo "************** SCRIPT STARTING **************"
 function variable_init()
 {
 
+	# Outputs variable
+	debug_out=/dev/null
+	user_warning=/dev/tty
+
 	# ssh-agent data vars
         data_dir=.slp_data
         ssh_agent_data_file=$data_dir/ssh_agent_data_file
@@ -41,10 +45,10 @@ function variable_init()
 			running_ssh_agent_process_number=`echo "$ssh_agent_process_list" | wc -l`
                 	running_agent_pid=`echo $ssh_agent_process_list | awk -v temp=$ps_pid_col_ref '{print $temp}'`
 		fi
-		
-		echo "**** ssh_agent_process_list value: $ssh_agent_process_list" > /dev/tty
-		echo "**** running_ssh_agent_process_number value: $running_ssh_agent_process_number" > /dev/tty
-		echo "**** running_agent_pid: $running_agent_pid" > /dev/tty
+
+		echo "**** ssh_agent_process_list value: $ssh_agent_process_list" > $debug_out
+		echo "**** running_ssh_agent_process_number value: $running_ssh_agent_process_number" > $debug_out
+		echo "**** running_agent_pid: $running_agent_pid" > $debug_out
 
 }
 
@@ -63,7 +67,7 @@ function slp_env_exists()
 # Creates the SLP data dir and data file
 function create_slp_env()
 {
-        echo "**** Data dir path: $data_dir"  > /dev/tty
+        echo "**** Data dir path: $data_dir"  > $debug_out
         mkdir $data_dir
 	touch $ssh_agent_data_file
 
@@ -86,7 +90,7 @@ function is_agent_running()
 
 	# Anything else, empty value, etc, agent is probably not running.
         else
-		echo "**** Agent not running" > /dev/tty
+		echo "**** Agent not running" > $debug_out
                 echo false
 
         fi
@@ -101,12 +105,12 @@ function purge_ssh_agent()
 {
 
 	# Kill all ssh-agent process
-	echo "**** Purging ssh-agent process"  > /dev/tty
+	echo "**** Purging ssh-agent process"  > $debug_out
 
 	while read line
 	do
 		proc_pid=`echo $line | awk -v temp=$ps_pid_col_ref '{print $temp}'`
-		echo "**** Killing ssh-agent process PID: $proc_pid"  > /dev/tty
+		echo "**** Killing ssh-agent process PID: $proc_pid"  > $debug_out
 		kill $proc_pid
 	done < <(echo "$ssh_agent_process_list")
 
@@ -120,14 +124,14 @@ function start_ssh_agent()
 {
 
 
-	echo "**** Starting SSH-AGENT"  > /dev/tty
+	echo "**** Starting SSH-AGENT"  > $debug_out
 	
 	eval `ssh-agent` > /dev/null
 
 	#check if ssh-key file does NOT exists
 	if [ ! -f ~/.ssh/id_dsa_slp ]
 	then
-		echo "**** Ssh-key file does NOT exists, script will now generete one"  > /dev/tty
+		echo "**** Ssh-key file does NOT exists, script will now generete one"  > $debug_out
 		generate_ssh_key
 	fi
 
@@ -143,8 +147,8 @@ function start_ssh_agent()
 function generate_ssh_key()
 {
 
-	echo "**** Please follow the instructions to generate your SSH-KEY"
-	echo "**** DO NOT USE AN EMPTY PASSPHRASE!"
+	echo "**** Please follow the instructions to generate your SSH-KEY" > $user_warning
+	echo "**** DO NOT USE AN EMPTY PASSPHRASE!" > $user_warning
 	
 	# generates the key ending with "_slp" to be different from users created ssh key pairs.
 	ssh-keygen -t dsa -f $slp_ssh_key_path -q 
@@ -158,12 +162,12 @@ function generate_ssh_key()
 function set_ssh_agent_env_var()
 {
 
-	echo "**** Setting environment variables"  > /dev/tty
+	echo "**** Setting environment variables"  > $debug_out
 
-	echo "**** SSH-Agent PID: $ssh_agent_pid_value"  > /dev/tty
+	echo "**** SSH-Agent PID: $ssh_agent_pid_value"  > $debug_out
 	export SSH_AGENT_PID=`cat $ssh_agent_data_file | head -1 | tail -1`
 
-	echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"  > /dev/tty
+	echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"  > $debug_out
 	export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
 
 }
@@ -174,10 +178,10 @@ function check_ssh_agent_consistency()
 
 	stored_agent_pid=`cat $ssh_agent_data_file | head -1 | tail -1`
 
-	echo "**** Stored agent PID: $stored_agent_pid" > /dev/tty
-	echo "**** Running agent PID: $running_agent_pid" > /dev/tty
-	echo "**** Stored Agent PID: $stored_agent_pid" > /dev/tty
-	echo "**** Env var SSH_AGENT_PID: $SSH_AGENT_PID" > /dev/tty
+	echo "**** Stored agent PID: $stored_agent_pid" > $debug_out
+	echo "**** Running agent PID: $running_agent_pid" > $debug_out
+	echo "**** Stored Agent PID: $stored_agent_pid" > $debug_out
+	echo "**** Env var SSH_AGENT_PID: $SSH_AGENT_PID" > $debug_out
 
 
 	if [ "$stored_agent_pid" == "$running_agent_pid" ] && [ "$stored_agent_pid" == "$SSH_AGENT_PID" ]
@@ -202,27 +206,27 @@ function main()
 
 
         case `slp_env_exists` in
-                "true") echo "**** SLP ENV OK";;
-                "false") echo "**** SLP ENV does not exists, creating..."
+                "true") echo "**** SLP ENV OK" > $debug_out;;
+                "false") echo "**** SLP ENV does not exists, creating..." > $debug_out
                 create_slp_env;;
         esac	
 
 
         case `is_agent_running` in
-                "true") echo "**** Agent is running"
+                "true") echo "**** Agent is running" > $debug_out
                         set_ssh_agent_env_var
 
                 case `check_ssh_agent_consistency` in
-                        "true") echo "**** Agent is consistent, stored PID and running process PID matches!";;
-                        "false") echo "**** Agent not consistent, stored PID and running PID DO NOT MATCHES!"
+                        "true") echo "**** Agent is consistent, stored PID and running process PID matches!" > $debug_out;;
+                        "false") echo "**** Agent not consistent, stored PID and running PID DO NOT MATCHES!" > $debug_out
                         purge_ssh_agent
                         start_ssh_agent;;
                 esac;;
 
-                "false") echo "**** Agent is not Running"
+                "false") echo "**** Agent is not Running" > $debug_out
                         start_ssh_agent;;
                 "error")
-                        echo "**** Error, more than 1 agent is running for user: $LOGNAME"
+                        echo "**** Error, more than 1 agent is running for user: $LOGNAME" > $debug_out
                         purge_ssh_agent
                         start_ssh_agent;;
         esac
