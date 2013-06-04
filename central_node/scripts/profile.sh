@@ -69,6 +69,7 @@ function create_slp_env()
 {
         echo "**** Data dir path: $data_dir"  > $debug_out
         mkdir $data_dir
+	chmod -R 700 $data_dir
 	touch $ssh_agent_data_file
 
 }
