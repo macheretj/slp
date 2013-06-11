@@ -1,9 +1,8 @@
 #!/bin/bash
 
-trap "echo CTRL-C not allowed!" 2
-
-
-
+# Version: Alpha
+# Coded by Jonas Macheret
+# Contact macheretj@gmail.com
 
 echo "************** SCRIPT STARTING **************"
 
