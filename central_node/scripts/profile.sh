@@ -12,12 +12,13 @@ function variable_init()
 {
 
 	# Outputs variable
-	debug_out=/dev/null
+	debug_out=/dev/tty
 	user_warning=/dev/tty
 
 	# ssh-agent data vars
         data_dir=.slp_data
         ssh_agent_data_file=$data_dir/ssh_agent_data_file
+	slp_script_dir=$(dirname $0)
 
 	# Process list propreties
 	ps_options="-e -o user,pid,comm"
@@ -26,7 +27,7 @@ function variable_init()
 	ps_comm_col_ref=3
 
 	# ssh keys data
-	ssh_key_path=~/.ssh/
+	ssh_key_path=~/.ssh
 	slp_ssh_key_path=$ssh_key_path/id_dsa_slp
 
 
@@ -34,7 +35,7 @@ function variable_init()
 
                 # Results of PS formated command (user, PID, command), for current user,  awk extracts the command column value, pipe it to egrep -x ssh-agent...
                 # ... extracting only process by strict name "ssh-agent"
-                ssh_agent_process_list=`bash sps.sh ssh-agent | grep $(whoami)`
+                ssh_agent_process_list=`bash $slp_script_dir/sps.sh ssh-agent | grep $(whoami)`
 
 		# test if ssh-agent process list is empty
 		if [ "$ssh_agent_process_list" == "" ]
@@ -129,7 +130,7 @@ function start_ssh_agent()
 	eval `ssh-agent` > /dev/null
 
 	#check if ssh-key file does NOT exists
-	if [ ! -f ~/.ssh/id_dsa_slp ]
+	if [ ! -f $slp_ssh_key_path ]
 	then
 		echo "**** Ssh-key file does NOT exists, script will now generete one"  > $debug_out
 		generate_ssh_key
@@ -164,11 +165,11 @@ function set_ssh_agent_env_var()
 
 	echo "**** Setting environment variables"  > $debug_out
 
-	echo "**** SSH-Agent PID: $ssh_agent_pid_value"  > $debug_out
 	export SSH_AGENT_PID=`cat $ssh_agent_data_file | head -1 | tail -1`
+	echo "**** SSH-Agent PID: $SSH_AGENT_PID"  > $debug_out
 
-	echo "**** SSH-Agent Auth Socket: $ssh_agent_auth_sock"  > $debug_out
 	export SSH_AUTH_SOCK=`cat $ssh_agent_data_file | head -2 | tail -1`
+        echo "**** SSH-Agent Auth Socket: $SSH_AUTH_SOCK"  > $debug_out
 
 }
 
@@ -180,9 +181,7 @@ function check_ssh_agent_consistency()
 
 	echo "**** Stored agent PID: $stored_agent_pid" > $debug_out
 	echo "**** Running agent PID: $running_agent_pid" > $debug_out
-	echo "**** Stored Agent PID: $stored_agent_pid" > $debug_out
 	echo "**** Env var SSH_AGENT_PID: $SSH_AGENT_PID" > $debug_out
-
 
 	if [ "$stored_agent_pid" == "$running_agent_pid" ] && [ "$stored_agent_pid" == "$SSH_AGENT_PID" ]
 	then
@@ -214,14 +213,15 @@ function main()
 
         case `is_agent_running` in
                 "true") echo "**** Agent is running" > $debug_out
-                        set_ssh_agent_env_var
 
-                case `check_ssh_agent_consistency` in
-                        "true") echo "**** Agent is consistent, stored PID and running process PID matches!" > $debug_out;;
-                        "false") echo "**** Agent not consistent, stored PID and running PID DO NOT MATCHES!" > $debug_out
-                        purge_ssh_agent
-                        start_ssh_agent;;
-                esac;;
+                	case `check_ssh_agent_consistency` in
+                        	"true") echo "**** Agent is consistent, stored PID and running process PID matches!" > $debug_out;;
+                        	"false") echo "**** Agent not consistent, stored PID and running PID DO NOT MATCHES!" > $debug_out
+                        	purge_ssh_agent
+                        	start_ssh_agent;;
+                	esac
+
+			set_ssh_agent_env_var;;
 
                 "false") echo "**** Agent is not Running" > $debug_out
                         start_ssh_agent;;
