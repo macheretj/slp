@@ -1,17 +1,32 @@
 SLP - SSH Single Login Point Project
 ===
 
-Introduction
+1 Introduction
 --------
 
-This project aims to automate ssh-agent mechanism for users and provide a secured single point of login.
+This project aims to automate ssh-agent mechanism for users and provide a secured single point of login. The principle behind it is to have a single point of entry for ssh access to other servers inside your LAN for instance. SLP will provide server side scripts and client side scripts. The server will be in charge of reminding the user ssh-agent process identity and publish public ssh keys to clients. Clients will be able to fetch users ssh-keys and authorizes the keys published by the SLP server to be used for ssh-agent connections.
 
-Overview
+1.2 Use case Scenario
+--------
+
+1.3 SLP exemple infrastructure Overview
 --------
 
 ![SLP Overview schema](https://www.lucidchart.com/publicSegments/view/51abe29b-f344-465c-b2b9-29720a005a97/image.png "SLP Overview schema")
 
-Paths and files definition
+1.4 Pro/cons
+--------
+
+2 Requirements analysis
+--------
+
+2.1 System requirements
+--------
+
+2.2 Dependencies
+--------
+
+2.3 Paths and files definition
 --------
 
 On central node:
@@ -29,6 +44,22 @@ On all remote nodes:
   - Client script used to fetch user's ssh public keys from web dir from the central node and adds it to .ssh/authorized_keys.
   - script  will be appended to /etc/environment file for a forced use of SLP for all users.
 
+2.3 General workflow description
+--------
+
+2.4 Server side workflow
+--------
+
+2.5 Client side workflow
+--------
+
+3 Analysis
+
+1.1 SSH-AGENT mechanism analysis
+--------
+
+4 Implementation
+
 
 TODO before alpha version
 ===
@@ -42,10 +73,12 @@ PRIORITARY:
   - use of arrays [OK]
     - sort processes within arrays [OK, done differently]
   - avoid using ps command more than once [OK, done using variables]
+  
+- Full documentation [in progress]
+  - comment the code [in progress]
+  - Docuemnt ssh-agent mechanism overview
 
 SECONDARY:
-- Full documentation
-  - comment the code
 - implement client side
 - install apache2 on server side
   - document install and vhost config
